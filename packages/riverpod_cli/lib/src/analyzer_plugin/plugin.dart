@@ -1,8 +1,5 @@
-import 'dart:async';
-
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/element/element.dart';
-import 'package:analyzer/error/error.dart';
 import 'package:analyzer/file_system/file_system.dart';
 // ignore: implementation_imports
 import 'package:analyzer/src/context/builder.dart';
@@ -11,8 +8,8 @@ import 'package:analyzer/src/context/context_root.dart';
 // ignore: implementation_imports
 import 'package:analyzer/src/dart/analysis/driver.dart';
 // ignore: implementation_imports
-import 'package:analyzer/src/workspace/basic.dart';
-
+import 'package:analyzer/src/dart/analysis/file_state.dart';
+import 'package:analyzer_plugin/channel/channel.dart';
 import 'package:analyzer_plugin/plugin/plugin.dart';
 import 'package:analyzer_plugin/protocol/protocol_common.dart' as plugin;
 import 'package:analyzer_plugin/protocol/protocol_generated.dart' as plugin;
@@ -23,17 +20,28 @@ class RiverpodAnalysisPlugin extends ServerPlugin {
   final Checker checker = Checker();
   @override
   AnalysisDriverGeneric createAnalysisDriver(plugin.ContextRoot contextRoot) {
-    final root = ContextRoot(contextRoot.root, contextRoot.exclude,
-        pathContext: resourceProvider.pathContext);
+    final rootPath = contextRoot.root;
+    final root = ContextRoot(
+      rootPath,
+      contextRoot.exclude,
+      pathContext: resourceProvider.pathContext,
+    )..optionsFilePath = contextRoot.optionsFile;
 
     final contextBuilder = ContextBuilder(resourceProvider, sdkManager, null)
       ..analysisDriverScheduler = analysisDriverScheduler
       ..byteStore = byteStore
-      ..performanceLog = performanceLog;
-    final result = contextBuilder.buildDriver(
-        root, BasicWorkspace.find(resourceProvider, {}, root.root));
-    result.results.listen(_processResult);
-    return result;
+      ..performanceLog = performanceLog
+      ..fileContentOverlay = FileContentOverlay();
+
+    final workspace = ContextBuilder.createWorkspace(
+      resourceProvider: resourceProvider,
+      options: ContextBuilderOptions(),
+      rootPath: rootPath,
+    );
+
+    final dartDriver = contextBuilder.buildDriver(root, workspace);
+    dartDriver.results.listen(_processResult);
+    return dartDriver;
   }
 
   @override
@@ -50,7 +58,7 @@ class RiverpodAnalysisPlugin extends ServerPlugin {
   void _processResult(ResolvedUnitResult analysisResult) {
     // If there is no relevant analysis result, notify the analyzer of no errors.
     if (analysisResult.unit != null) {
-      final checkResult = checker.check(analysisResult.libraryElement);
+      final checkResult = checker.check(analysisResult.libraryElement, channel);
       channel.sendNotification(plugin.AnalysisErrorsParams(
               analysisResult.path!, checkResult.keys.toList())
           .toNotification());
@@ -65,7 +73,7 @@ class RiverpodAnalysisPlugin extends ServerPlugin {
 
 class Checker {
   Map<plugin.AnalysisError, plugin.PrioritizedSourceChange> check(
-      LibraryElement libraryElement) {
+      LibraryElement libraryElement, PluginCommunicationChannel channel) {
     final result = <plugin.AnalysisError, plugin.PrioritizedSourceChange>{};
     for (final compilationUnit in libraryElement.units) {
       try {
@@ -95,7 +103,12 @@ class Checker {
               edits: [],
             ));
         result[err] = fix;
-      } catch (e) {}
+      } catch (e, st) {
+        channel.sendNotification(
+          plugin.PluginErrorParams(false, e.toString(), st.toString())
+              .toNotification(),
+        );
+      }
     }
     return result;
   }

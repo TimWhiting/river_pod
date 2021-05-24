@@ -20,6 +20,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   mockito: ^5.0.0-nullsafety.5
+  riverpod_cli: ^0.0.3
 
 dependency_overrides:
   flutter_riverpod:
@@ -28,6 +29,8 @@ dependency_overrides:
     path: ../../packages/hooks_riverpod
   riverpod:
     path: ../../packages/riverpod
+  riverpod_cli:
+    path: ../../packages/riverpod_cli
 
 flutter:
   uses-material-design: true
