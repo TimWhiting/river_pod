@@ -9,6 +9,7 @@ environment:
 
 dependencies:
   analyzer: "^1.5.0"
+  analyzer_plugin: any
   args: ^2.0.0
   codemod: ^1.0.0
   glob: ^2.0.1
