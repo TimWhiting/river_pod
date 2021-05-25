@@ -1,6 +1,6 @@
 
 name: riverpod_analyzer_plugin_loader
-version: 8.0.6
+version: 1.0.0-alpha.0
 description: This pubspec determines the version of the analyzer plugin to load.
 environment:
   sdk: '>=2.12.0 < 3.0.0'
@@ -8,4 +8,4 @@ dependencies:
   riverpod_cli: ^0.0.3
 dependency_overrides:
   riverpod_cli: 
-    path: ../../
+    path: /Users/timwhiting/dev/river_pod/packages/riverpod_cli
