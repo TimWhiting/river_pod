@@ -2,8 +2,9 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 
-import 'package:codemod/codemod.dart';
+import 'package:analyzer/analyzer.dart';
 import 'package:analyzer/dart/element/type.dart';
+import 'package:codemod/codemod.dart';
 import 'package:pub_semver/pub_semver.dart';
 
 /// A suggestor that yields changes to notifier changes
@@ -90,7 +91,7 @@ class RiverpodNotifierChangesMigrationSuggestor
 
   @override
   void visitPropertyAccess(PropertyAccess node) {
-    // useProvider(Static.provider.state) => useProvider(provider)
+    // ref.watch(Static.provider.state) => ref.watch(provider)
     if (node.propertyName.name == 'state') {
       if (node.realTarget.staticType!
           .getDisplayString(withNullability: true)
@@ -111,7 +112,7 @@ class RiverpodNotifierChangesMigrationSuggestor
       if (firstArgStaticType.contains('StateNotifierProvider')) {
         // StateNotifierProvider
         // watch(provider) => watch(provider.notifier)
-        // useProvider(provider) => useProvider(provider.notifier)
+        // useProvider(provider) => ref.watch(provider.notifier)
         yieldPatch('.notifier', node.argumentList.arguments.first.end,
             node.argumentList.arguments.first.end);
       }
